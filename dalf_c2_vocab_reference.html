@@ -1,0 +1,158 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.tabs{display:flex;gap:8px;margin-bottom:20px}
+.tab{padding:7px 18px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:14px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);transition:all .15s}
+.tab.active{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary);font-weight:500}
+.panel{display:none}.panel.active{display:block}
+.search{width:100%;padding:8px 12px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:14px;background:var(--color-background-primary);color:var(--color-text-primary);margin-bottom:16px}
+.search:focus{outline:none;border-color:var(--color-border-primary)}
+.section-title{font-size:13px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 14px}
+.word{font-size:15px;font-weight:500;color:var(--color-text-primary)}
+.def{font-size:13px;color:var(--color-text-secondary);margin-top:3px;line-height:1.5}
+.ex{font-size:12.5px;color:var(--color-text-tertiary);margin-top:5px;font-style:italic;border-left:2px solid var(--color-border-tertiary);padding-left:8px;line-height:1.5}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;margin-right:4px;margin-top:5px}
+.t-tone{background:var(--color-background-info);color:var(--color-text-info)}
+.t-pos{background:var(--color-background-success);color:var(--color-text-success)}
+.t-neg{background:var(--color-background-danger);color:var(--color-text-danger)}
+.t-neut{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.hidden{display:none}
+.count{font-size:12px;color:var(--color-text-tertiary);margin-bottom:12px}
+</style>
+
+<div style="padding:1rem 0">
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('adj')">Adjectifs</button>
+  <button class="tab" onclick="switchTab('conn')">Connecteurs & tournures</button>
+</div>
+
+<div id="adj" class="panel active">
+  <input class="search" placeholder="Rechercher un adjectif ou une définition…" oninput="filterCards('adj',this.value)">
+  <div class="count" id="adj-count"></div>
+  <div class="grid" id="adj-grid"></div>
+</div>
+
+<div id="conn" class="panel">
+  <input class="search" placeholder="Rechercher une expression…" oninput="filterCards('conn',this.value)">
+  <div class="count" id="conn-count"></div>
+  <div class="grid" id="conn-grid"></div>
+</div>
+</div>
+
+<script>
+const adjectifs = [
+  {w:"consensuel",d:"qui fait l'objet d'un accord général, sans vraie contestation",e:"Une solution trop consensuelle risque de n'engager personne.",tone:"neut"},
+  {w:"ringard",d:"dépassé, démodé, qui manque de modernité",e:"Ce management paternaliste paraît ringard aux yeux des nouvelles générations.",tone:"neg"},
+  {w:"prégnant",d:"qui s'impose fortement à l'esprit, très présent",e:"L'idéologie de la performance reste prégnante dans le monde de l'entreprise.",tone:"neut"},
+  {w:"incontournable",d:"dont on ne peut faire abstraction, s'impose",e:"La question du sens au travail est devenue incontournable.",tone:"neut"},
+  {w:"fallacieux",d:"trompeur en apparence logique, qui induit en erreur",e:"Cet argument est séduisant mais fallacieux.",tone:"neg"},
+  {w:"ambivalent",d:"qui contient deux valeurs ou sentiments contradictoires",e:"Notre rapport au travail demeure profondément ambivalent.",tone:"neut"},
+  {w:"insidieux",d:"qui agit de façon cachée et progressive, dangereusement",e:"La pression insidieuse du présentéisme épuise les salariés.",tone:"neg"},
+  {w:"vertueux",d:"qui produit de bons effets en chaîne, moralement positif",e:"Un cercle vertueux s'enclenche entre bien-être et productivité.",tone:"pos"},
+  {w:"pernicieux",d:"qui cause du tort de manière détournée et durable",e:"Cette confusion identité/travail a des effets pernicieux.",tone:"neg"},
+  {w:"ostentatoire",d:"qui cherche délibérément à se faire remarquer, tapageur",e:"La générosité ostentatoire de certaines entreprises cache souvent un calcul.",tone:"neg"},
+  {w:"sibyllin",d:"obscur, énigmatique, difficile à interpréter",e:"Sa réponse sibylline n'a fait qu'alimenter les doutes.",tone:"neut"},
+  {w:"désuet",d:"tombé en désuétude, vieilli et inadapté",e:"Ce modèle taylorien semble aujourd'hui parfaitement désuet.",tone:"neg"},
+  {w:"équivoque",d:"qui prête à plusieurs interprétations, ambigu",e:"Le discours managérial sur le bonheur reste équivoque.",tone:"neut"},
+  {w:"lacunaire",d:"incomplet, qui comporte des lacunes importantes",e:"L'analyse proposée demeure lacunaire sur la question sociale.",tone:"neg"},
+  {w:"biaisé",d:"faussé par un préjugé ou un biais méthodologique",e:"Un sondage interne est nécessairement biaisé.",tone:"neg"},
+  {w:"exorbitant",d:"excessif, qui dépasse les limites raisonnables",e:"Déléguer son bonheur à son employeur lui confère un pouvoir exorbitant.",tone:"neg"},
+  {w:"pérenne",d:"durable dans le temps, qui résiste à l'usure",e:"Seul un modèle pérenne peut garantir la performance sur le long terme.",tone:"pos"},
+  {w:"tangible",d:"que l'on peut constater concrètement, réel et mesurable",e:"Les résultats tangibles de cette politique restent à démontrer.",tone:"neut"},
+  {w:"lénifiant",d:"qui apaise de façon superficielle et trompeuse",e:"Un discours lénifiant ne saurait masquer la réalité des conditions de travail.",tone:"neg"},
+  {w:"révélateur",d:"qui révèle quelque chose d'important ou de caché",e:"Ce malaise est révélateur d'une crise plus profonde.",tone:"neut"},
+  {w:"préoccupant",d:"qui suscite une inquiétude légitime",e:"L'augmentation du burn-out est un phénomène préoccupant.",tone:"neg"},
+  {w:"structurel",d:"qui touche aux fondements mêmes d'un système",e:"Le problème n'est pas conjoncturel mais structurel.",tone:"neut"},
+  {w:"inédit",d:"jamais vu ou connu auparavant, sans précédent",e:"Cette crise du sens au travail présente une ampleur inédite.",tone:"neut"},
+  {w:"dérisoire",d:"trop faible pour être pris au sérieux, négligeable",e:"Les mesures proposées paraissent dérisoires face à l'ampleur du problème.",tone:"neg"},
+  {w:"complaisant",d:"qui cherche à flatter ou à satisfaire de façon excessive",e:"Une analyse complaisante de la situation n'aidera personne.",tone:"neg"},
+  {w:"corrosif",d:"qui détruit progressivement, dévastateur",e:"Le cynisme corrosif finit par ronger toute motivation.",tone:"neg"},
+  {w:"ambiguë",d:"qui peut être compris de plusieurs façons, peu clair",e:"La notion de « liberté au travail » reste fondamentalement ambiguë.",tone:"neut"},
+  {w:"trompeur",d:"qui donne une fausse impression, illusoire",e:"Les apparences sont souvent trompeuses dans ce domaine.",tone:"neg"},
+  {w:"salutaire",d:"qui fait du bien, bénéfique même si difficile",e:"Cette prise de conscience, bien que douloureuse, s'avère salutaire.",tone:"pos"},
+  {w:"superficiel",d:"qui ne va pas en profondeur, qui reste à la surface",e:"Une politique RH superficielle ne trompe plus les salariés.",tone:"neg"},
+  {w:"décisif",d:"qui joue un rôle déterminant dans l'issue d'une situation",e:"Le rôle du manager de proximité est décisif.",tone:"neut"},
+  {w:"illusoire",d:"qui n'existe que dans l'apparence, sans réalité",e:"Espérer un épanouissement total dans le travail relève d'une croyance illusoire.",tone:"neg"},
+  {w:"pragmatique",d:"attaché aux réalités concrètes, aux résultats pratiques",e:"Une approche pragmatique s'impose face aux injonctions idéologiques.",tone:"pos"},
+  {w:"croissant",d:"qui augmente progressivement",e:"La pression croissante sur les résultats nuit à la qualité de vie.",tone:"neut"},
+  {w:"persistant",d:"qui dure malgré les obstacles, tenace",e:"Un malaise persistant traverse les organisations modernes.",tone:"neut"},
+];
+
+const connecteurs = [
+  {w:"par rapport à",d:"comparaison ou mise en relation avec un référent",e:"Par rapport aux générations précédentes, les attentes ont profondément changé.",tone:"neut"},
+  {w:"à cet égard",d:"sous cet angle particulier, à ce sujet précis",e:"À cet égard, les avancées législatives sont indéniables.",tone:"neut"},
+  {w:"en d'autres termes",d:"reformulation plus claire de ce qui précède",e:"En d'autres termes, l'entreprise déplace le problème sans le résoudre.",tone:"neut"},
+  {w:"à l'inverse",d:"en contraste direct avec ce qui vient d'être dit",e:"À l'inverse, certaines entreprises ont fait le choix inverse.",tone:"neut"},
+  {w:"il n'en demeure pas moins que",d:"concession forte : malgré tout, le fait reste",e:"Il n'en demeure pas moins que les conditions de travail se sont dégradées.",tone:"neut"},
+  {w:"en l'occurrence",d:"dans ce cas précis, concrètement ici",e:"En l'occurrence, c'est la direction qui porte la responsabilité.",tone:"neut"},
+  {w:"dans la mesure où",d:"dans la proportion où, étant donné que (cause nuancée)",e:"Dans la mesure où le salarié est épanoui, sa productivité augmente.",tone:"neut"},
+  {w:"à plus forte raison",d:"raison encore plus convaincante dans ce cas",e:"Si le travail aliène, à plus forte raison faut-il préserver sa vie hors de lui.",tone:"neut"},
+  {w:"au demeurant",d:"par ailleurs, du reste — nuance ou complément",e:"Au demeurant, ces initiatives ne manquent pas d'intérêt.",tone:"neut"},
+  {w:"en dépit de",d:"malgré, sans tenir compte de",e:"En dépit des efforts affichés, le mal-être persiste.",tone:"neut"},
+  {w:"quitte à",d:"même au risque de, en acceptant la conséquence",e:"Il faut nommer les choses, quitte à bousculer les habitudes.",tone:"neut"},
+  {w:"pour peu que",d:"à condition que, si tant est que (hypothèse facile à remplir)",e:"Pour peu qu'on y réfléchisse, la contradiction saute aux yeux.",tone:"neut"},
+  {w:"sans pour autant",d:"mais pas pour autant, sans que cela implique",e:"On peut critiquer le système sans pour autant le rejeter en bloc.",tone:"neut"},
+  {w:"loin de + inf.",d:"contrairement à ce qu'on pourrait croire",e:"Loin de résoudre le problème, cette mesure l'aggrave.",tone:"neut"},
+  {w:"à l'aune de",d:"à la mesure de, en évaluant par rapport à",e:"À l'aune de ces résultats, la politique menée semble inefficace.",tone:"neut"},
+  {w:"force est de constater que",d:"on est obligé d'admettre que",e:"Force est de constater que le discours ne coïncide pas avec la réalité.",tone:"neut"},
+  {w:"si tant est que",d:"à condition que (condition douteuse ou difficile)",e:"Si tant est qu'un équilibre soit possible, il reste fragile.",tone:"neut"},
+  {w:"d'aucuns",d:"certaines personnes, quelques-uns (registre soutenu)",e:"D'aucuns estiment que le bien-être au travail n'est qu'une mode.",tone:"neut"},
+  {w:"il va sans dire que",d:"cela est évident, c'est une évidence que",e:"Il va sans dire que la surcharge de travail est néfaste.",tone:"neut"},
+  {w:"en filigrane",d:"de manière sous-jacente, implicitement",e:"En filigrane se dessine une critique du modèle capitaliste.",tone:"neut"},
+  {w:"à l'encontre de",d:"contre, en opposition directe à",e:"Cette politique va à l'encontre des intérêts des salariés.",tone:"neut"},
+  {w:"au regard de",d:"si l'on considère, en comparaison avec",e:"Au regard des enjeux, les moyens alloués paraissent insuffisants.",tone:"neut"},
+  {w:"nonobstant",d:"malgré, en dépit de (très soutenu)",e:"Nonobstant ces difficultés, des avancées réelles ont été réalisées.",tone:"neut"},
+  {w:"à rebours de",d:"en sens contraire de, contre le courant de",e:"À rebours des idées reçues, le bonheur au travail est un enjeu sérieux.",tone:"neut"},
+  {w:"partant",d:"par conséquent, donc (registre soutenu)",e:"La confiance est érodée, partant, toute réforme sera mal reçue.",tone:"neut"},
+  {w:"il s'avère que",d:"il apparaît clairement que, il est avéré que",e:"Il s'avère que les mesures cosmétiques n'ont aucun effet durable.",tone:"neut"},
+  {w:"en sus de",d:"en plus de, au-delà de",e:"En sus des avantages matériels, la reconnaissance symbolique compte.",tone:"neut"},
+  {w:"au-delà de",d:"plus loin que, en dépassant le cadre de",e:"Au-delà du simple confort, c'est le sens qui est en jeu.",tone:"neut"},
+  {w:"sous couvert de",d:"en se dissimulant derrière une apparence de",e:"Sous couvert de bienveillance, s'exerce un contrôle accru.",tone:"neut"},
+  {w:"en définitive",d:"en fin de compte, tout bien considéré",e:"En définitive, c'est la culture d'entreprise qui fait la différence.",tone:"neut"},
+  {w:"à l'instar de",d:"à la manière de, comme le fait",e:"À l'instar des pays nordiques, la France pourrait revoir ses pratiques.",tone:"neut"},
+  {w:"dès lors que",d:"à partir du moment où, du fait que",e:"Dès lors que le travail perd son sens, la démotivation s'installe.",tone:"neut"},
+  {w:"quant à",d:"pour ce qui est de, en ce qui concerne",e:"Quant à la question salariale, elle reste entière.",tone:"neut"},
+  {w:"c'est dire si",d:"formule d'insistance : cela montre bien à quel point",e:"C'est dire si la situation est préoccupante.",tone:"neut"},
+  {w:"tant il est vrai que",d:"car il est incontestable que",e:"Tant il est vrai que le stress nuit à la créativité.",tone:"neut"},
+];
+
+function renderCards(containerId, data){
+  const g=document.getElementById(containerId);
+  g.innerHTML=data.map(item=>`
+    <div class="card" data-text="${(item.w+' '+item.d+' '+item.e).toLowerCase()}">
+      <div class="word">${item.w}</div>
+      <div class="def">${item.d}</div>
+      <div class="ex">${item.e}</div>
+      <span class="tag t-${item.tone}">${item.tone==='pos'?'valorisant':item.tone==='neg'?'péjoratif':'neutre'}</span>
+    </div>`).join('');
+  updateCount(containerId.replace('-grid',''), data.length);
+}
+
+function updateCount(panelId, n){
+  const el=document.getElementById(panelId+'-count');
+  if(el) el.textContent=n+' entrée'+(n>1?'s':'');
+}
+
+function filterCards(panelId, val){
+  const q=val.toLowerCase().trim();
+  const cards=document.querySelectorAll(`#${panelId}-grid .card`);
+  let n=0;
+  cards.forEach(c=>{
+    const show=!q||c.dataset.text.includes(q);
+    c.classList.toggle('hidden',!show);
+    if(show) n++;
+  });
+  updateCount(panelId,n);
+}
+
+function switchTab(id){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['adj','conn'][i]===id));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===id));
+}
+
+renderCards('adj-grid', adjectifs);
+renderCards('conn-grid', connecteurs);
+</script>
